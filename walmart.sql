@@ -1,0 +1,224 @@
+create database walmart;
+show databases;
+use walmart;
+select * from walmart;
+
+-- SOLVING BUSINESS PROBLEMS
+
+-- 1. What are the different payment methods, and how many transactions and items were sold with each method?
+
+SELECT PAYMENT_METHOD,COUNT(*) COUNT ,SUM(QUANTITY) TOTAL_QUANTITY FROM WALMART group by PAYMENT_METHOD;
+
+-- 2. Which category received the highest average rating in each branch?
+
+select * from walmart;
+
+SELECT * FROM
+(
+SELECT 
+	BRANCH,
+    CATEGORY,
+    AVG(RATING) AS AVG_RATING,
+    RANK() OVER(PARTITION BY BRANCH ORDER BY AVG(RATING) DESC) AS RNK
+FROM WALMART 
+GROUP BY BRANCH,CATEGORY
+ORDER BY BRANCH,AVG_RATING DESC
+) T1
+WHERE RNK = 1;
+
+-- 3. What is the busiest day of the week for each branch based on transaction volume?
+
+SELECT * FROM WALMART;
+
+ALTER TABLE walmart ADD COLUMN date_converted DATE;
+
+UPDATE walmart
+SET date_converted = STR_TO_DATE(DATE, '%Y-%m-%d');
+
+alter TABLE WALMART DROP column DATE;
+
+ALTER TABLE WALMART CHANGE COLUMN DATE ORDER_DATE DATE;
+
+ALTER TABLE walmart ADD COLUMN day_name VARCHAR(15);
+
+UPDATE walmart
+SET DAY_NAME = dayname(ORDER_DATE);
+
+SELECT * FROM
+(
+SELECT
+	BRANCH,
+	DAY_NAME,
+    COUNT(*) CNT,
+    RANK() OVER(PARTITION BY BRANCH ORDER BY COUNT(*) DESC) AS DAY_RANK
+FROM WALMART
+GROUP BY BRANCH,DAY_NAME
+) T1
+WHERE DAY_RANK = 1;
+
+-- 4. How many items were sold through each payment method?
+
+SELECT * FROM WALMART;
+
+SELECT
+	PAYMENT_METHOD,
+    SUM(quantity) TOTAL_QUANTITY
+FROM WALMART
+GROUP BY PAYMENT_METHOD; 
+
+-- 5. What are the average, minimum, and maximum ratings for each category in each city?
+
+SELECT * FROM WALMART;
+
+SELECT 
+	CITY,
+    CATEGORY,
+    AVG(RATING) AVG_RATING,
+    MIN(RATING) MIN_RATING,
+    MAX(RATING) MAX_RATING
+FROM WALMART
+GROUP BY CATEGORY, CITY
+ORDER BY CITY ASC;
+
+-- 6. What is the total profit for each category, ranked from highest to lowest?
+
+SELECT * FROM WALMART;
+
+SELECT
+      CATEGORY,
+      SUM(AMOUNT * PROFIT_MARGIN ) AS SUM_PROFIT,
+      RANK() OVER(ORDER BY SUM(AMOUNT * PROFIT_MARGIN ) DESC) AS PROFIT_RANK
+FROM WALMART
+GROUP BY CATEGORY;
+
+-- 7. What is the most frequently used payment method in each branch?
+
+SELECT * FROM WALMART;
+
+WITH PAY_RNK AS
+(
+SELECT
+	BRANCH,
+    PAYMENT_METHOD,
+    COUNT(*) TOTAL_TRANS,
+    RANK() OVER(PARTITION BY BRANCH ORDER BY COUNT(*) DESC) RANK_ORDER
+FROM WALMART
+GROUP BY BRANCH, PAYMENT_METHOD
+)
+SELECT * 
+FROM PAY_RNK 
+WHERE RANK_ORDER = 1;
+
+-- 8. How many transactions occur in each shift (Morning, Afternoon, Evening) across branches?
+
+SELECT * FROM WALMART;
+
+UPDATE WALMART SET TIME = TIME(TIME);
+
+ALTER TABLE WALMART
+MODIFY COLUMN TIME TIME;
+
+DESCRIBE WALMART;
+
+WITH TIME_SHIFT AS
+(
+	SELECT
+		BRANCH,
+		CASE 
+			WHEN HOUR(TIME) < 12 THEN 'MORNING'
+			WHEN HOUR(TIME) BETWEEN 12 AND 17 THEN 'AFTERNOON'
+			ELSE 'EVENING' 
+		END DAY_TIME
+	FROM WALMART
+)
+SELECT 
+	BRANCH,
+	DAY_TIME,
+    COUNT(*) TRNS_CNT
+FROM TIME_SHIFT
+GROUP BY BRANCH, DAY_TIME
+ORDER BY BRANCH,TRNS_CNT DESC;
+
+
+-- 9. Which branches experienced the largest decrease in revenue compared to the previous year? 
+
+SELECT * FROM WALMART;
+
+SELECT DISTINCT(YEAR(ORDER_DATE)) FROM WALMART;
+-- ( HERE YEARS ARE FROM 2019 TO 2023 , LETS CONSIDERE PREV YEAR AS 2022)
+
+WITH REVENUE_2022 AS
+(
+	SELECT 
+		BRANCH,
+		SUM(AMOUNT) REVENUE,
+		YEAR(ORDER_DATE)
+	FROM WALMART
+	WHERE YEAR(ORDER_DATE) = 2022
+	GROUP BY BRANCH, YEAR(ORDER_DATE)
+),
+REVENUE_2023 AS
+(
+	SELECT 
+		BRANCH,
+		SUM(AMOUNT) REVENUE,
+		YEAR(ORDER_DATE)
+	FROM WALMART
+	WHERE YEAR(ORDER_DATE) = 2023
+	GROUP BY BRANCH, YEAR(ORDER_DATE)
+)
+
+SELECT 
+	LYR.BRANCH,
+	LYR.REVENUE LAST_YEAR_REV, 
+	CYR.REVENUE CURR_YEAR_REV,
+	((LYR.REVENUE-CYR.REVENUE)/(LYR.REVENUE) * 100) AS INC_PERCENTAGE
+FROM 
+	REVENUE_2022 LYR
+JOIN
+	REVENUE_2023 CYR
+ON  
+	LYR.BRANCH = CYR.BRANCH
+WHERE 
+	LYR.REVENUE > CYR.REVENUE
+ORDER BY
+	INC_PERCENTAGE DESC LIMIT 5;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
